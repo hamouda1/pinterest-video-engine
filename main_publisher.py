@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from vault_crypto import decrypt_bytes, encrypt_bytes
 from tiktok_extractor import extract_and_download_video
