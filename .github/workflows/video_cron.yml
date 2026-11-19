@@ -1,0 +1,40 @@
+name: Pinterest Autonomous Video Engine
+
+on:
+  schedule:
+    # Run every 6 hours (4 viral video pins per day)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: pinterest-video-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Video Engine Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Video Extraction & In-Memory Publishing
+        env:
+          VIDEO_VAULT_KEY: ${{ secrets.VIDEO_VAULT_KEY }}
+          VAULT_PAT: ${{ secrets.VAULT_PAT }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          VAULT_REPO: "hamouda1/pinterest-video-vault"
+        run: |
+          python main_publisher.py
