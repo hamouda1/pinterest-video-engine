@@ -4,6 +4,44 @@ from typing import List, Dict, Any
 
 APIFY_BASE = "https://api.apify.com/v2"
 
+def clean_tiktok_caption(raw_text: str, creator_username: str, niche_tag: str = "coffee") -> str:
+    """
+    Cleans raw TikTok text:
+    - Strips 'link in bio', 'linked in bio', personal drama or first-person claims
+    - Retains general descriptive words and aesthetic vibe
+    - Appends respectful 3rd-person attribution to creator
+    """
+    import re
+    text = raw_text or ""
+    # Strip URLs
+    text = re.sub(r'https?://\S+', '', text)
+    # Strip phrases like "link in bio", "linked in bio", "check bio", etc.
+    bio_patterns = [
+        r'(?i)\ball\s+(the\s+)?(materials|items|links|products)\s+(are\s+)?linked\s+in\s+(my\s+)?bio[^\w\s]*',
+        r'(?i)\blink\s+(is\s+)?(in\s+)?(my\s+)?bio[^\w\s]*',
+        r'(?i)\blinked\s+in\s+(my\s+)?bio[^\w\s]*',
+        r'(?i)\bcheck\s+(my\s+)?bio[^\w\s]*',
+        r'(?i)\b(dm|comment)\s+for\s+(the\s+)?link[^\w\s]*',
+        r'(?i)\bpraying\s+on\s+(the\s+)?downfall[^\w\s]*',
+        r'(?i)\blet\s+me\s+know\s+if\s+i\s+missed[^\w\s]*',
+        r'(?i)\bwhat\s+do\s+you\s+think\s+of\s+my[^\w\s]*'
+    ]
+    for pat in bio_patterns:
+        text = re.sub(pat, '', text)
+
+    # Clean excessive whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    if len(text) < 15:
+        text = f"Cozy and aesthetic at-home #{niche_tag} setup inspo ✨"
+
+    clean_caption = text[:230].strip()
+    credit_line = f"✨ Video by: @{creator_username} on TikTok\n(All rights belong to the creator - DM for removal)"
+    curation_line = f"Curated for aesthetic daily inspiration ☕✨ #{niche_tag} #aesthetic #inspo"
+
+    full_desc = f"{clean_caption}\n\n{credit_line}\n\n{curation_line}"
+    return full_desc[:500]
+
 def search_trending_tiktok_videos(
     hashtag: str,
     max_items: int = 15,
@@ -52,10 +90,7 @@ def search_trending_tiktok_videos(
             if download_url or web_url:
                 creator_username = it.get("authorMeta", {}).get("name") or "creator"
                 clean_title = (it.get("text") or f"Aesthetic #{clean_tag} Inspiration").split("#")[0].strip()[:85]
-                caption_text = it.get("text", "").strip()[:240]
-                
-                credit_block = f"✨ Video credit: @{creator_username} on TikTok\n(All rights reserved to the creator - DM for credit or removal)"
-                full_desc = f"{caption_text}\n\n{credit_block}\n\nFollow for daily aesthetic #{clean_tag} inspiration! #{clean_tag} #aesthetic #viral"
+                full_desc = clean_tiktok_caption(it.get("text", ""), creator_username, clean_tag)
                 
                 results.append({
                     "id": f"vid_{it.get('id')}",
@@ -63,7 +98,7 @@ def search_trending_tiktok_videos(
                     "video_source_url": download_url or web_url,
                     "web_url": web_url,
                     "title": clean_title or f"Aesthetic #{clean_tag} Find",
-                    "description": full_desc[:500],
+                    "description": full_desc,
                     "play_count": it.get("playCount", 0),
                     "digg_count": it.get("diggCount", 0),
                     "share_count": it.get("shareCount", 0),

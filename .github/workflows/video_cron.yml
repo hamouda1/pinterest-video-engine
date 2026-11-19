@@ -1,9 +1,9 @@
 name: Pinterest Autonomous Video Engine
 
 on:
-  schedule:
-    # Run every 6 hours (4 viral video pins per day)
-    - cron: '0 */6 * * *'
+  # schedule:
+  #   # Paused on demand: Run manually via workflow_dispatch
+  #   - cron: '0 */6 * * *'
   workflow_dispatch:
 
 concurrency:

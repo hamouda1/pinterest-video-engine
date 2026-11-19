@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from vault_crypto import decrypt_bytes, encrypt_bytes
 from tiktok_extractor import extract_and_download_video
 from pinterest_video_uploader import PinterestVideoUploader
+from apify_discovery import clean_tiktok_caption
 
 VAULT_REPO = os.environ.get("VAULT_REPO", "hamouda1/pinterest-video-vault")
 VAULT_PAT = os.environ.get("VAULT_PAT")
@@ -151,12 +152,9 @@ def main():
         meta, local_mp4 = extract_and_download_video(source_url)
         print(f"   ✅ Downloaded: {local_mp4.name} (Duration: {meta.get('duration')}s, Size: {os.path.getsize(local_mp4)} bytes)", flush=True)
 
-        # Automated Fair-Use Creator Attribution
-        creator = target_item.get("creator_username") or meta.get("uploader")
-        if creator and "Video credit:" not in desc:
-            credit_line = f"\n\n✨ Video credit: @{creator} on TikTok\n(All rights reserved to original creator - DM for credit/removal)"
-            max_desc_len = 490 - len(credit_line)
-            desc = desc[:max_desc_len].strip() + credit_line
+        # Automated Fair-Use Creator Attribution and Caption Sanitization
+        creator = target_item.get("creator_username") or meta.get("uploader") or "creator"
+        desc = clean_tiktok_caption(desc, creator, "coffee")
 
         # 4. Upload and Publish to Pinterest API v5
         uploader = PinterestVideoUploader(access_token=token)
