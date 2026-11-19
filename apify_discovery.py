@@ -26,29 +26,37 @@ def search_trending_tiktok_videos(
     payload = {
         "hashtags": [clean_tag],
         "resultsPerPage": max_items,
-        "shouldDownloadVideos": False,
+        "shouldDownloadVideos": True,
         "shouldDownloadCovers": False
     }
 
     headers = {"Authorization": f"Bearer {api_token}"}
 
     try:
-        print(f"   🔍 Querying Apify for #{clean_tag} trending videos...", flush=True)
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        print(f"   🔍 Querying Apify for #{clean_tag} viral videos...", flush=True)
+        resp = requests.post(url, headers=headers, json=payload, timeout=90)
         resp.raise_for_status()
         items = resp.json()
 
         results = []
         for it in items:
-            web_url = it.get("webVideoUrl") or it.get("videoUrl")
+            download_url = it.get("downloadAddr") or (it.get("mediaUrls", [None])[0] if it.get("mediaUrls") else None)
+            if download_url and "token=" not in download_url:
+                download_url = f"{download_url}?token={api_token}"
+
+            web_url = it.get("webVideoUrl")
             if not web_url and it.get("id"):
                 author = it.get("authorMeta", {}).get("name", "tiktok")
                 web_url = f"https://www.tiktok.com/@{author}/video/{it.get('id')}"
 
-            if web_url:
+            if download_url or web_url:
+                clean_title = (it.get("text") or f"Aesthetic #{clean_tag} Inspiration").split("#")[0].strip()[:90]
                 results.append({
-                    "video_url": web_url,
-                    "title": it.get("text") or f"Aesthetic #{clean_tag} Find",
+                    "id": f"vid_{it.get('id')}",
+                    "video_source_url": download_url or web_url,
+                    "web_url": web_url,
+                    "title": clean_title or f"Aesthetic #{clean_tag} Find",
+                    "description": f"{it.get('text', '')[:350]}\n\nFollow for more daily aesthetic #{clean_tag} inspiration! #aesthetic #{clean_tag} #viral #inspo",
                     "play_count": it.get("playCount", 0),
                     "digg_count": it.get("diggCount", 0),
                     "share_count": it.get("shareCount", 0),

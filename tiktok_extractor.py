@@ -6,15 +6,35 @@ import yt_dlp
 
 def extract_and_download_video(url: str, output_dir: str = None) -> Tuple[Dict[str, Any], Path]:
     """
-    Downloads a TikTok / Short-form vertical video without watermark using yt-dlp.
+    Downloads a TikTok / Short-form vertical video without watermark.
+    Supports direct MP4 URLs (from Apify) and standard TikTok web URLs (via yt-dlp).
     Returns:
       (metadata_dict, local_file_path)
     """
     if not output_dir:
         output_dir = tempfile.gettempdir()
 
-    out_template = os.path.join(output_dir, "pin_video_%(id)s.%(ext)s")
+    # 1. Direct MP4 stream (e.g. from Apify storage)
+    if ".mp4" in url.lower() or "apify.com" in url.lower():
+        import requests
+        out_path = Path(output_dir) / f"pin_video_{tempfile.mktemp(dir='')}.mp4"
+        print(f"   📥 Downloading direct clean MP4 stream...", flush=True)
+        resp = requests.get(url, stream=True, timeout=60)
+        resp.raise_for_status()
+        with open(out_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
 
+        meta = {
+            "title": "Aesthetic Viral Video",
+            "duration": 15,
+            "size": out_path.stat().st_size
+        }
+        return meta, out_path
+
+    # 2. Standard Web URL via yt-dlp
+    out_template = os.path.join(output_dir, "pin_video_%(id)s.%(ext)s")
     ydl_opts = {
         "format": "best[ext=mp4]/best",
         "outtmpl": out_template,
