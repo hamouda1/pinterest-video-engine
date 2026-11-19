@@ -50,13 +50,20 @@ def search_trending_tiktok_videos(
                 web_url = f"https://www.tiktok.com/@{author}/video/{it.get('id')}"
 
             if download_url or web_url:
-                clean_title = (it.get("text") or f"Aesthetic #{clean_tag} Inspiration").split("#")[0].strip()[:90]
+                creator_username = it.get("authorMeta", {}).get("name") or "creator"
+                clean_title = (it.get("text") or f"Aesthetic #{clean_tag} Inspiration").split("#")[0].strip()[:85]
+                caption_text = it.get("text", "").strip()[:240]
+                
+                credit_block = f"✨ Video credit: @{creator_username} on TikTok\n(All rights reserved to the creator - DM for credit or removal)"
+                full_desc = f"{caption_text}\n\n{credit_block}\n\nFollow for daily aesthetic #{clean_tag} inspiration! #{clean_tag} #aesthetic #viral"
+                
                 results.append({
                     "id": f"vid_{it.get('id')}",
+                    "creator_username": creator_username,
                     "video_source_url": download_url or web_url,
                     "web_url": web_url,
                     "title": clean_title or f"Aesthetic #{clean_tag} Find",
-                    "description": f"{it.get('text', '')[:350]}\n\nFollow for more daily aesthetic #{clean_tag} inspiration! #aesthetic #{clean_tag} #viral #inspo",
+                    "description": full_desc[:500],
                     "play_count": it.get("playCount", 0),
                     "digg_count": it.get("diggCount", 0),
                     "share_count": it.get("shareCount", 0),
