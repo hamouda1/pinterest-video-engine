@@ -29,7 +29,7 @@ class PinterestVideoUploader:
             resp = requests.post(upload_url, data=upload_params, files=files, timeout=120)
             resp.raise_for_status()
 
-    def wait_for_transcoding(self, media_id: str, timeout: int = 90, poll_interval: int = 5) -> bool:
+    def wait_for_transcoding(self, media_id: str, timeout: int = 300, poll_interval: int = 5) -> bool:
         """Step 3: Poll Pinterest media endpoint until transcoding succeeds."""
         url = f"{API_BASE}/media/{media_id}"
         start_time = time.time()
@@ -55,7 +55,7 @@ class PinterestVideoUploader:
         title: str,
         description: str,
         link: Optional[str] = None,
-        cover_image_key_frame_time: float = 1.0
+        cover_image_key_frame_time: int = 1
     ) -> Dict[str, Any]:
         """Step 4: Create final Video Pin using verified media_id."""
         url = f"{API_BASE}/pins"
@@ -66,7 +66,7 @@ class PinterestVideoUploader:
             "media_source": {
                 "source_type": "video_id",
                 "media_id": str(media_id),
-                "cover_image_key_frame_time": cover_image_key_frame_time
+                "cover_image_key_frame_time": int(cover_image_key_frame_time)
             }
         }
         if link and link.strip():
