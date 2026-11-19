@@ -154,7 +154,18 @@ def main():
 
         # Automated Fair-Use Creator Attribution and Caption Sanitization
         creator = target_item.get("creator_username") or meta.get("uploader") or "creator"
-        desc = clean_tiktok_caption(desc, creator, "coffee")
+        board_name_low = str(target_item.get("board_name", "")).lower()
+        acc_low = str(acc_id).lower()
+        if any(w in board_name_low or w in acc_low for w in ["montessori", "nursery", "baby", "toddler"]):
+            tag = "montessori"
+        elif any(w in board_name_low or w in acc_low for w in ["coffee", "brew", "matcha"]):
+            tag = "coffee"
+        elif any(w in board_name_low or w in acc_low for w in ["book", "reading", "read"]):
+            tag = "reading"
+        else:
+            tag = "aesthetic"
+
+        desc = clean_tiktok_caption(desc, creator, tag)
 
         # 4. Upload and Publish to Pinterest API v5
         uploader = PinterestVideoUploader(access_token=token)
