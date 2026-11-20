@@ -70,6 +70,39 @@ def commit_and_push_vault(vault_dir: Path):
         subprocess.run(["git", "-C", str(vault_dir), "push", "origin", "main"], check=True)
     print("   ✅ Encrypted vault successfully synchronized!", flush=True)
 
+ACTIVE_ACCOUNTS_CONFIG = [
+    {
+        "account_id": "montessorinest_",
+        "board_id": "1091630465869892618",
+        "board_name": "Wooden Montessori Toys & Playroom",
+        "hashtag": "montessoritoys"
+    },
+    {
+        "account_id": "anisds1995",
+        "board_id": "1106196795914700326",
+        "board_name": "Cozy Living Room & Warm Lighting Ideas",
+        "hashtag": "cozylivingroom"
+    },
+    {
+        "account_id": "habiboumez",
+        "board_id": "1093037840753549578",
+        "board_name": "Chunky Cable Knit Cardigans & Knits",
+        "hashtag": "cableknitsweater"
+    },
+    {
+        "account_id": "ThePantryHaven",
+        "board_id": "258112691083171863",
+        "board_name": "Aesthetic Pantry & Spice Jar Labels",
+        "hashtag": "pantryorganization"
+    },
+    {
+        "account_id": "marrytreasures",
+        "board_id": "677440037639174208",
+        "board_name": "Cozy Fall & Thanksgiving Aesthetic Finds",
+        "hashtag": "aestheticgifts"
+    }
+]
+
 def main():
     print("=" * 65)
     print("🚀 PINTEREST AUTONOMOUS VIDEO PUBLISHING CYCLE")
@@ -112,12 +145,35 @@ def main():
             }
         ]
 
-    # Find next pending video
-    target_item = None
-    for item in queue:
-        if item.get("status") == "pending":
-            target_item = item
+    # Find next pending video using fair Round-Robin across active accounts
+    active_acc_ids = [c["account_id"] for c in ACTIVE_ACCOUNTS_CONFIG]
+
+    last_published_acc = None
+    for item in reversed(queue):
+        if item.get("status") == "published":
+            last_published_acc = item.get("account_id")
             break
+
+    next_idx = 0
+    if last_published_acc in active_acc_ids:
+        next_idx = (active_acc_ids.index(last_published_acc) + 1) % len(active_acc_ids)
+
+    target_item = None
+    for offset in range(len(active_acc_ids)):
+        candidate_acc = active_acc_ids[(next_idx + offset) % len(active_acc_ids)]
+        for item in queue:
+            if item.get("status") == "pending" and item.get("account_id") == candidate_acc and item.get("account_id") in accounts:
+                target_item = item
+                break
+        if target_item:
+            break
+
+    # Fallback to any pending item in vault
+    if not target_item:
+        for item in queue:
+            if item.get("status") == "pending" and item.get("account_id") in accounts:
+                target_item = item
+                break
 
     if not target_item:
         print("ℹ️ All videos in queue already published. Queue complete.")
