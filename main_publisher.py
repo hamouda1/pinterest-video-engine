@@ -167,12 +167,17 @@ def main():
 
         desc = clean_tiktok_caption(desc, creator, tag)
 
+        # Sanitize title to ensure safe Pinterest API validation
+        clean_title = (title or f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨").split('#')[0].strip()
+        if len(clean_title) < 5 or len(clean_title) > 85:
+            clean_title = f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨"
+
         # 4. Upload and Publish to Pinterest API v5
         uploader = PinterestVideoUploader(access_token=token)
         pin_res = uploader.upload_and_publish(
             file_path=local_mp4,
             board_id=board_id,
-            title=title,
+            title=clean_title,
             description=desc,
             link=link
         )

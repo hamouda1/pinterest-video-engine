@@ -18,6 +18,8 @@ class PinterestVideoUploader:
         url = f"{API_BASE}/media"
         payload = {"media_type": "video"}
         resp = requests.post(url, headers=self.headers, json=payload, timeout=30)
+        if resp.status_code >= 400:
+            print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
         resp.raise_for_status()
         return resp.json()
 
@@ -73,6 +75,8 @@ class PinterestVideoUploader:
             payload["link"] = link.strip()
 
         resp = requests.post(url, headers=self.headers, json=payload, timeout=30)
+        if resp.status_code >= 400:
+            print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
         resp.raise_for_status()
         return resp.json()
 
