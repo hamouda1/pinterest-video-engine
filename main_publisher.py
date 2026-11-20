@@ -158,6 +158,14 @@ def main():
         acc_low = str(acc_id).lower()
         if any(w in board_name_low or w in acc_low for w in ["montessori", "nursery", "baby", "toddler"]):
             tag = "montessori"
+        elif any(w in board_name_low or w in acc_low for w in ["cozy", "candle", "decor", "bedroom", "living", "lighting", "throw", "holiday", "christmas"]):
+            tag = "cozyhome"
+        elif any(w in board_name_low or w in acc_low for w in ["sweater", "apparel", "knit", "hoodie", "outfit", "cardigan", "fashion", "streetwear"]):
+            tag = "aestheticoutfit"
+        elif any(w in board_name_low or w in acc_low for w in ["pantry", "kitchen", "jar", "cutting", "spice", "farmhouse"]):
+            tag = "kitcheninspo"
+        elif any(w in board_name_low or w in acc_low for w in ["gift", "jewelry", "wedding", "tee", "shirt", "graphic", "couple"]):
+            tag = "personalizedgifts"
         elif any(w in board_name_low or w in acc_low for w in ["coffee", "brew", "matcha"]):
             tag = "coffee"
         elif any(w in board_name_low or w in acc_low for w in ["book", "reading", "read"]):

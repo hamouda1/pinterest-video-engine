@@ -37,7 +37,21 @@ def clean_tiktok_caption(raw_text: str, creator_username: str, niche_tag: str = 
 
     clean_caption = text[:230].strip()
     credit_line = f"✨ Video credit: @{creator_username} on TikTok\n(All rights belong to the creator - DM for removal)"
-    emoji = "🧸✨" if any(w in niche_tag.lower() for w in ["baby", "montessori", "nursery", "kids", "toddler"]) else ("☕✨" if "coffee" in niche_tag.lower() else "✨")
+    if any(w in niche_tag.lower() for w in ["baby", "montessori", "nursery", "kids", "toddler"]):
+        emoji = "🧸✨"
+    elif any(w in niche_tag.lower() for w in ["cozy", "home", "candle", "decor"]):
+        emoji = "🕯️✨"
+    elif any(w in niche_tag.lower() for w in ["outfit", "sweater", "fashion", "apparel"]):
+        emoji = "👗✨"
+    elif any(w in niche_tag.lower() for w in ["kitchen", "pantry", "farmhouse"]):
+        emoji = "🌿✨"
+    elif any(w in niche_tag.lower() for w in ["gift", "jewelry", "wedding", "tee"]):
+        emoji = "🎁✨"
+    elif "coffee" in niche_tag.lower():
+        emoji = "☕✨"
+    else:
+        emoji = "✨"
+
     curation_line = f"Curated for daily aesthetic inspiration {emoji} #{niche_tag} #aesthetic #inspo"
 
     full_desc = f"{clean_caption}\n\n{credit_line}\n\n{curation_line}"
