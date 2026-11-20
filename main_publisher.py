@@ -169,7 +169,7 @@ def main():
 
         # Sanitize title to ensure safe Pinterest API validation
         clean_title = (title or f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨").split('#')[0].strip()
-        if len(clean_title) < 5 or len(clean_title) > 85:
+        if len(clean_title) < 5 or clean_title.startswith('@') or len(clean_title) > 85:
             clean_title = f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨"
 
         # 4. Upload and Publish to Pinterest API v5
