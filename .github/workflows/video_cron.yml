@@ -2,8 +2,8 @@ name: Pinterest Autonomous Video Engine
 
 on:
   schedule:
-    # Autonomous publishing: Off-peak minute 17 every 2 hours to avoid GitHub Actions queue delays
-    - cron: '17 */2 * * *'
+    # Autonomous publishing: Every 15 minutes (with strict 15m network & 4h account cooldown guard)
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 concurrency:

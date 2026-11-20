@@ -157,7 +157,63 @@ def main():
                 except Exception as e:
                     print(f"   ⚠️ Discovery notice for @{acc_id}: {e}", flush=True)
 
-    # 3. Find candidates using fair Round-Robin across active accounts
+    # 3. Apply Timing Guards: Min 15m between accounts, Min 4h per account
+    MIN_NETWORK_INTERVAL_MIN = 15
+    MIN_ACCOUNT_COOLDOWN_HOURS = 4
+    now = datetime.now()
+
+    # Rule 1: Min 15m between any two pins across the entire network
+    last_network_pub = None
+    for item in reversed(queue):
+        if item.get("status") == "published" and item.get("published_at"):
+            try:
+                dt = datetime.strptime(item.get("published_at"), "%Y-%m-%d %H:%M:%S")
+                if last_network_pub is None or dt > last_network_pub:
+                    last_network_pub = dt
+            except Exception:
+                pass
+
+    if last_network_pub:
+        mins_since_net = (now - last_network_pub).total_seconds() / 60
+        if mins_since_net < MIN_NETWORK_INTERVAL_MIN:
+            wait_m = MIN_NETWORK_INTERVAL_MIN - mins_since_net
+            print(f"⏳ Network Interval Guard: Only {mins_since_net:.1f}m since last pin. Waiting {wait_m:.1f}m (15m rule).", flush=True)
+            return
+
+    # Rule 2: Min 4 hours between pins on the SAME account
+    last_pub_by_acc = {}
+    for item in queue:
+        if item.get("status") == "published" and item.get("published_at"):
+            acc = item.get("account_id")
+            try:
+                dt = datetime.strptime(item.get("published_at"), "%Y-%m-%d %H:%M:%S")
+                if acc not in last_pub_by_acc or dt > last_pub_by_acc[acc]:
+                    last_pub_by_acc[acc] = dt
+            except Exception:
+                pass
+
+    eligible_acc_ids = []
+    for cfg in ACTIVE_ACCOUNTS_CONFIG:
+        acc_id = cfg["account_id"]
+        if acc_id not in accounts:
+            continue
+        if acc_id not in last_pub_by_acc:
+            eligible_acc_ids.append(acc_id)
+            print(f"   🟢 @{acc_id}: Ready to publish (no previous pin on record)")
+        else:
+            hours_since = (now - last_pub_by_acc[acc_id]).total_seconds() / 3600
+            if hours_since >= MIN_ACCOUNT_COOLDOWN_HOURS:
+                eligible_acc_ids.append(acc_id)
+                print(f"   🟢 @{acc_id}: Ready to publish ({hours_since:.1f}h since last pin >= 4h)")
+            else:
+                rem_mins = (MIN_ACCOUNT_COOLDOWN_HOURS - hours_since) * 60
+                print(f"   ⏳ @{acc_id}: In cooldown ({hours_since:.1f}h / 4h). Next pin in {rem_mins:.0f}m.")
+
+    if not eligible_acc_ids:
+        print("⏳ All active accounts are currently within their 4-hour cooldown period.", flush=True)
+        return
+
+    # Find next candidate in Round-Robin order among ELIGIBLE accounts only
     active_acc_ids = [c["account_id"] for c in ACTIVE_ACCOUNTS_CONFIG]
 
     last_published_acc = None
@@ -173,18 +229,16 @@ def main():
     candidates = []
     for offset in range(len(active_acc_ids)):
         candidate_acc = active_acc_ids[(next_idx + offset) % len(active_acc_ids)]
+        if candidate_acc not in eligible_acc_ids:
+            continue
         for item in queue:
             if item.get("status") == "pending" and item.get("account_id") == candidate_acc and item.get("account_id") in accounts:
                 if item not in candidates:
                     candidates.append(item)
                 break
 
-    for item in queue:
-        if item.get("status") == "pending" and item.get("account_id") in accounts and item not in candidates:
-            candidates.append(item)
-
     if not candidates:
-        print("ℹ️ All videos in queue already published or no pending items. Queue complete.")
+        print("ℹ️ No pending videos ready for eligible accounts. Queue complete or awaiting items.", flush=True)
         return
 
     # 4. Attempt publishing candidate videos until one succeeds
