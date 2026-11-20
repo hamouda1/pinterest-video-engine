@@ -2,8 +2,8 @@ name: Pinterest Autonomous Video Engine
 
 on:
   schedule:
-    # Autonomous publishing: 1 viral video every 2 hours (12 videos per day)
-    - cron: '0 */2 * * *'
+    # Autonomous publishing: Off-peak minute 17 every 2 hours to avoid GitHub Actions queue delays
+    - cron: '17 */2 * * *'
   workflow_dispatch:
 
 concurrency:
