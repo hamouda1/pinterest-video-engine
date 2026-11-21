@@ -47,6 +47,12 @@ ACTIVE_ACCOUNTS_CONFIG = [
         "board_id": "677440037639174208",
         "board_name": "Cozy Fall & Thanksgiving Aesthetic Finds",
         "hashtag": "aestheticgifts"
+    },
+    {
+        "account_id": "koreanskincare_finds",
+        "board_id": "246642585782160372",
+        "board_name": "Glass Skin Routines",
+        "hashtag": "koreanskincare"
     }
 ]
 
