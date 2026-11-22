@@ -35,7 +35,7 @@ ACTIVE_ACCOUNTS_CONFIG = [
         "account_id": "habiboumez",
         "board_id": "1093037840753549578",
         "board_name": "Chunky Cable Knit Cardigans & Knits",
-        "hashtag": "cableknitsweater"
+        "hashtag": "knitwear"
     },
     {
         "account_id": "ThePantryHaven",
