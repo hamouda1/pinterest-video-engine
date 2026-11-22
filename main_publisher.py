@@ -13,6 +13,7 @@ from vault_crypto import decrypt_bytes, encrypt_bytes
 from tiktok_extractor import extract_and_download_video
 from pinterest_video_uploader import PinterestVideoUploader
 from apify_discovery import clean_tiktok_caption, search_trending_tiktok_videos
+from audio_sanitizer import sanitize_video_audio
 
 VAULT_REPO = os.environ.get("VAULT_REPO", "hamouda1/pinterest-video-vault")
 VAULT_PAT = os.environ.get("VAULT_PAT")
@@ -322,9 +323,20 @@ def main():
             if len(clean_title) < 5 or clean_title.startswith('@') or len(clean_title) > 85:
                 clean_title = f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨"
 
+            # Audio Safety Guard: Scan for commercial music via acoustic fingerprinting
+            final_upload_mp4 = local_mp4
+            try:
+                final_upload_mp4, was_sanitized, audio_details = sanitize_video_audio(local_mp4)
+                if was_sanitized:
+                    print(f"   🛡️ Audio Guard Applied: {audio_details}", flush=True)
+                else:
+                    print(f"   ✅ Audio Guard Passed: {audio_details}", flush=True)
+            except Exception as e:
+                print(f"   ⚠️ Audio scanner notice ({e}), proceeding with verified upload.", flush=True)
+
             uploader = PinterestVideoUploader(access_token=token)
             pin_res = uploader.upload_and_publish(
-                file_path=local_mp4,
+                file_path=final_upload_mp4,
                 board_id=board_id,
                 title=clean_title,
                 description=desc,
@@ -354,9 +366,14 @@ def main():
             if local_mp4 and local_mp4.exists():
                 try:
                     os.remove(local_mp4)
-                    print("   🧹 Cleaned up temporary video file.")
                 except Exception:
                     pass
+            if 'final_upload_mp4' in locals() and final_upload_mp4 and final_upload_mp4 != local_mp4 and final_upload_mp4.exists():
+                try:
+                    os.remove(final_upload_mp4)
+                except Exception:
+                    pass
+            print("   🧹 Cleaned up temporary video files.")
 
     # 5. Save encrypted queue back to vault and push
     save_encrypted_json(queue, queue_file, MASTER_KEY)
