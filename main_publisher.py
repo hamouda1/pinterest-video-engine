@@ -185,7 +185,8 @@ def main():
 
         if replenished_any:
             save_encrypted_json(queue, queue_file, MASTER_KEY)
-            print("   🔒 Saved replenished queue state into encrypted vault.", flush=True)
+            commit_and_push_vault(vault_dir)
+            print("   🔒 Saved and pushed replenished queue state into encrypted vault.", flush=True)
 
     # 3. Apply Timing Guards: Min 15m between network pins, Min 3h per account
     MIN_NETWORK_INTERVAL_MIN = 15
