@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import tempfile
 import shutil
@@ -132,21 +133,35 @@ def main():
     # 2. Load video queue in-memory
     queue = load_encrypted_json(queue_file, MASTER_KEY) or []
 
-    # 2.5 Auto-replenish queue for any active account with 0 or 1 pending videos using Apify
+    # 2.5 Auto-replenish queue for any active account up to 10 pending videos using Apify
+    TARGET_PENDING_PER_ACCOUNT = 10
     apify_token = os.environ.get("APIFY_TOKEN")
     if apify_token:
         existing_ids = {it.get("id") for it in queue}
+        replenished_any = False
         for cfg in ACTIVE_ACCOUNTS_CONFIG:
             acc_id = cfg["account_id"]
             if acc_id not in accounts:
                 continue
             pending_count = sum(1 for it in queue if it.get("account_id") == acc_id and it.get("status") == "pending")
-            if pending_count < 2:
-                print(f"🔍 Auto-discovering fresh viral videos for @{acc_id} (tag: #{cfg['hashtag']})...", flush=True)
+            if pending_count < TARGET_PENDING_PER_ACCOUNT:
+                needed = TARGET_PENDING_PER_ACCOUNT - pending_count
+                print(f"🔍 Replenishing queue for @{acc_id}: {pending_count}/{TARGET_PENDING_PER_ACCOUNT} pending. Querying Apify for {needed} videos (tag: #{cfg['hashtag']})...", flush=True)
                 try:
-                    discovered = search_trending_tiktok_videos(hashtag=cfg["hashtag"], max_items=4, token=apify_token)
+                    discovered = search_trending_tiktok_videos(hashtag=cfg["hashtag"], max_items=needed + 4, token=apify_token)
+                    added = 0
                     for vid in discovered:
                         if vid["id"] not in existing_ids:
+                            clean_t = vid.get("title", f"Aesthetic {cfg['board_name']} Inspo ✨")
+                            clean_t = re.sub(r'[\r\n]+', ' ', clean_t).strip()
+                            clean_t = re.sub(r'(?i)linked\s+on\s+my\s+\w+', '', clean_t).strip()
+                            clean_t = clean_t.split('@')[0].strip()
+                            if len(clean_t) < 5 or len(clean_t) > 75:
+                                clean_t = f"Aesthetic {cfg['board_name']} Inspo ✨"
+
+                            clean_d = vid.get("description", "")
+                            clean_d = re.sub(r'(?i)linked\s+on\s+my\s+\w+', '', clean_d).strip()
+
                             queue.append({
                                 "id": vid["id"],
                                 "account_id": acc_id,
@@ -154,18 +169,27 @@ def main():
                                 "board_name": cfg["board_name"],
                                 "video_source_url": vid["video_source_url"],
                                 "creator_username": vid.get("creator_username", "creator"),
-                                "title": vid.get("title", f"Aesthetic {cfg['board_name']}"),
-                                "description": vid.get("description", ""),
+                                "title": clean_t,
+                                "description": clean_d,
                                 "link": "",
                                 "status": "pending"
                             })
                             existing_ids.add(vid["id"])
+                            added += 1
+                            replenished_any = True
+                            if sum(1 for it in queue if it.get("account_id") == acc_id and it.get("status") == "pending") >= TARGET_PENDING_PER_ACCOUNT:
+                                break
+                    print(f"   ✅ Added {added} fresh videos to @{acc_id} queue.", flush=True)
                 except Exception as e:
                     print(f"   ⚠️ Discovery notice for @{acc_id}: {e}", flush=True)
 
-    # 3. Apply Timing Guards: Min 15m between accounts, Min 4h per account
+        if replenished_any:
+            save_encrypted_json(queue, queue_file, MASTER_KEY)
+            print("   🔒 Saved replenished queue state into encrypted vault.", flush=True)
+
+    # 3. Apply Timing Guards: Min 15m between network pins, Min 3h per account
     MIN_NETWORK_INTERVAL_MIN = 15
-    MIN_ACCOUNT_COOLDOWN_HOURS = 4
+    MIN_ACCOUNT_COOLDOWN_HOURS = 3
     now = datetime.now()
 
     # Rule 1: Min 15m between any two pins across the entire network
@@ -186,7 +210,7 @@ def main():
             print(f"⏳ Network Interval Guard: Only {mins_since_net:.1f}m since last pin. Waiting {wait_m:.1f}m (15m rule).", flush=True)
             return
 
-    # Rule 2: Min 4 hours between pins on the SAME account
+    # Rule 2: Min 3 hours between pins on the SAME account
     last_pub_by_acc = {}
     for item in queue:
         if item.get("status") == "published" and item.get("published_at"):
@@ -210,13 +234,13 @@ def main():
             hours_since = (now - last_pub_by_acc[acc_id]).total_seconds() / 3600
             if hours_since >= MIN_ACCOUNT_COOLDOWN_HOURS:
                 eligible_acc_ids.append(acc_id)
-                print(f"   🟢 @{acc_id}: Ready to publish ({hours_since:.1f}h since last pin >= 4h)")
+                print(f"   🟢 @{acc_id}: Ready to publish ({hours_since:.1f}h since last pin >= 3h)")
             else:
                 rem_mins = (MIN_ACCOUNT_COOLDOWN_HOURS - hours_since) * 60
-                print(f"   ⏳ @{acc_id}: In cooldown ({hours_since:.1f}h / 4h). Next pin in {rem_mins:.0f}m.")
+                print(f"   ⏳ @{acc_id}: In cooldown ({hours_since:.1f}h / 3h). Next pin in {rem_mins:.0f}m.")
 
     if not eligible_acc_ids:
-        print("⏳ All active accounts are currently within their 4-hour cooldown period.", flush=True)
+        print("⏳ All active accounts are currently within their 3-hour cooldown period.", flush=True)
         return
 
     # Find next candidate in Round-Robin order among ELIGIBLE accounts only
@@ -298,6 +322,9 @@ def main():
             desc = clean_tiktok_caption(desc, creator, tag)
 
             clean_title = (title or f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨").split('#')[0].strip()
+            clean_title = re.sub(r'[\r\n]+', ' ', clean_title).strip()
+            clean_title = re.sub(r'(?i)linked\s+on\s+my\s+\w+', '', clean_title).strip()
+            clean_title = clean_title.split('@')[0].strip()
             if len(clean_title) < 5 or clean_title.startswith('@') or len(clean_title) > 85:
                 clean_title = f"Aesthetic {target_item.get('board_name', 'Finds')} Inspo ✨"
 
