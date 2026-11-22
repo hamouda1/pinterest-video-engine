@@ -2,7 +2,7 @@ name: Pinterest Autonomous Video Engine
 
 on:
   schedule:
-    # Autonomous publishing: Every 15 minutes (with strict 15m network & 4h account cooldown guard)
+    # Autonomous backup trigger: Every 15 minutes
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   publish-video:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Video Engine Code
@@ -38,3 +38,13 @@ jobs:
           VAULT_REPO: "hamouda1/pinterest-video-vault"
         run: |
           python main_publisher.py
+
+      - name: Autonomous Relay to Next Publishing Cycle
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.VAULT_PAT }}
+        run: |
+          echo "⏳ Waiting 15 minutes for the network anti-spam cooldown window..."
+          sleep 900
+          echo "🚀 Dispatching next publishing cycle for the next account in line..."
+          gh workflow run video_cron.yml --repo hamouda1/pinterest-video-engine

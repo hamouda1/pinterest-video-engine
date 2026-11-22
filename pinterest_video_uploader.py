@@ -17,11 +17,21 @@ class PinterestVideoUploader:
         """Step 1: Register video upload session with Pinterest API v5."""
         url = f"{API_BASE}/media"
         payload = {"media_type": "video"}
-        resp = requests.post(url, headers=self.headers, json=payload, timeout=30)
-        if resp.status_code >= 400:
-            print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
-        resp.raise_for_status()
-        return resp.json()
+        last_err = None
+        for attempt in range(1, 4):
+            try:
+                resp = requests.post(url, headers=self.headers, json=payload, timeout=60)
+                if resp.status_code >= 400:
+                    print(f"   ❌ Pinterest Media Registration API Error ({resp.status_code}): {resp.text}", flush=True)
+                resp.raise_for_status()
+                return resp.json()
+            except requests.exceptions.RequestException as e:
+                last_err = e
+                if attempt < 3:
+                    print(f"   ⚠️ Media registration attempt {attempt} failed ({e}), retrying in 5s...", flush=True)
+                    time.sleep(5)
+                else:
+                    raise last_err
 
     def upload_file_to_s3(self, upload_url: str, upload_params: Dict[str, Any], file_path: Path):
         """Step 2: Upload MP4 binary file directly to Pinterest AWS S3 bucket."""
@@ -74,11 +84,21 @@ class PinterestVideoUploader:
         if link and link.strip():
             payload["link"] = link.strip()
 
-        resp = requests.post(url, headers=self.headers, json=payload, timeout=30)
-        if resp.status_code >= 400:
-            print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
-        resp.raise_for_status()
-        return resp.json()
+        last_err = None
+        for attempt in range(1, 4):
+            try:
+                resp = requests.post(url, headers=self.headers, json=payload, timeout=60)
+                if resp.status_code >= 400:
+                    print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
+                resp.raise_for_status()
+                return resp.json()
+            except requests.exceptions.RequestException as e:
+                last_err = e
+                if attempt < 3:
+                    print(f"   ⚠️ Pin creation attempt {attempt} failed ({e}), retrying in 5s...", flush=True)
+                    time.sleep(5)
+                else:
+                    raise last_err
 
     def upload_and_publish(
         self,
