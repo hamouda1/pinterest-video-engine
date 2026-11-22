@@ -244,24 +244,17 @@ def main():
         print("⏳ All active accounts are currently within their 3-hour cooldown period.", flush=True)
         return
 
-    # Find next candidate in Round-Robin order among ELIGIBLE accounts only
-    active_acc_ids = [c["account_id"] for c in ACTIVE_ACCOUNTS_CONFIG]
-
-    last_published_acc = None
-    for item in reversed(queue):
-        if item.get("status") == "published":
-            last_published_acc = item.get("account_id")
-            break
-
-    next_idx = 0
-    if last_published_acc in active_acc_ids:
-        next_idx = (active_acc_ids.index(last_published_acc) + 1) % len(active_acc_ids)
+    # Prioritize eligible accounts by Least Recently Published (oldest last_published_at or never)
+    # This guarantees exact, fair round-robin rotation across all active accounts without starvation.
+    eligible_acc_ids.sort(key=lambda acc: last_pub_by_acc.get(acc, datetime.min))
+    print("📋 Account Priority Queue (Oldest Published / Starved First):", flush=True)
+    for acc in eligible_acc_ids:
+        lp = last_pub_by_acc.get(acc)
+        lp_str = lp.strftime("%Y-%m-%d %H:%M:%S") if lp else "NEVER"
+        print(f"   👉 @{acc} (Last Pin: {lp_str})", flush=True)
 
     candidates = []
-    for offset in range(len(active_acc_ids)):
-        candidate_acc = active_acc_ids[(next_idx + offset) % len(active_acc_ids)]
-        if candidate_acc not in eligible_acc_ids:
-            continue
+    for candidate_acc in eligible_acc_ids:
         for item in queue:
             if item.get("status") == "pending" and item.get("account_id") == candidate_acc and item.get("account_id") in accounts:
                 if item not in candidates:
