@@ -118,11 +118,11 @@ def search_trending_tiktok_videos(
     url = f"{APIFY_BASE}/acts/{actor_id}/run-sync-get-dataset-items"
 
     clean_tag = hashtag.replace("#", "").strip()
-    fetch_count = max(max_items * 2, 20)
+    fetch_count = max(max_items, 5)
     payload = {
         "hashtags": [clean_tag],
         "resultsPerPage": fetch_count,
-        "shouldDownloadVideos": True,
+        "shouldDownloadVideos": False,
         "shouldDownloadCovers": False
     }
 
@@ -134,12 +134,12 @@ def search_trending_tiktok_videos(
         resp.raise_for_status()
         raw_items = resp.json()
 
-        # Separate items with Original / Voiceover / ASMR sound vs commercial music
+        # Prioritize organic audio, but retain all items (our audio sanitizer mutes commercial tracks safely)
         original_audio_items = [it for it in raw_items if is_original_audio(it)]
-        print(f"   🎵 Audio Guard: {len(original_audio_items)}/{len(raw_items)} videos verified with clean Original/ASMR sound.", flush=True)
+        other_audio_items = [it for it in raw_items if not is_original_audio(it)]
+        print(f"   🎵 Audio Guard: {len(original_audio_items)}/{len(raw_items)} organic sound, {len(other_audio_items)} will be sanitized if commercial.", flush=True)
 
-        # Enforce Solution 1: Only select videos with clean Original / ASMR audio to prevent Pinterest audio removal
-        selected_items = original_audio_items if original_audio_items else raw_items
+        selected_items = original_audio_items + other_audio_items
 
         results = []
         for it in selected_items:

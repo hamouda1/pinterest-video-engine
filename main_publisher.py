@@ -136,6 +136,7 @@ def main():
 
     # 2.5 Auto-replenish queue for any active account up to 10 pending videos using Apify
     TARGET_PENDING_PER_ACCOUNT = 10
+    REPLENISH_THRESHOLD = 3
     apify_token = os.environ.get("APIFY_TOKEN")
     if apify_token:
         existing_ids = {it.get("id") for it in queue}
@@ -145,11 +146,11 @@ def main():
             if acc_id not in accounts:
                 continue
             pending_count = sum(1 for it in queue if it.get("account_id") == acc_id and it.get("status") == "pending")
-            if pending_count < TARGET_PENDING_PER_ACCOUNT:
+            if pending_count <= REPLENISH_THRESHOLD:
                 needed = TARGET_PENDING_PER_ACCOUNT - pending_count
-                print(f"🔍 Replenishing queue for @{acc_id}: {pending_count}/{TARGET_PENDING_PER_ACCOUNT} pending. Querying Apify for {needed} videos (tag: #{cfg['hashtag']})...", flush=True)
+                print(f"🔍 Replenishing queue for @{acc_id}: {pending_count}/{TARGET_PENDING_PER_ACCOUNT} pending (threshold <= {REPLENISH_THRESHOLD}). Querying Apify for batch of {needed} videos (tag: #{cfg['hashtag']})...", flush=True)
                 try:
-                    discovered = search_trending_tiktok_videos(hashtag=cfg["hashtag"], max_items=needed + 4, token=apify_token)
+                    discovered = search_trending_tiktok_videos(hashtag=cfg["hashtag"], max_items=needed, token=apify_token)
                     added = 0
                     for vid in discovered:
                         if vid["id"] not in existing_ids:
