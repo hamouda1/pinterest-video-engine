@@ -190,9 +190,9 @@ def main():
             commit_and_push_vault(vault_dir)
             print("   🔒 Saved and pushed replenished queue state into encrypted vault.", flush=True)
 
-    # 3. Apply Timing Guards: Min 15m between network pins, Min 3h per account
+    # 3. Apply Timing Guards: Min 15m between network pins, Min 6h per account
     MIN_NETWORK_INTERVAL_MIN = 15
-    MIN_ACCOUNT_COOLDOWN_HOURS = 3
+    MIN_ACCOUNT_COOLDOWN_HOURS = 6
     now = datetime.now()
 
     # Rule 1: Min 15m between any two pins across the entire network
@@ -237,13 +237,13 @@ def main():
             hours_since = (now - last_pub_by_acc[acc_id]).total_seconds() / 3600
             if hours_since >= MIN_ACCOUNT_COOLDOWN_HOURS:
                 eligible_acc_ids.append(acc_id)
-                print(f"   🟢 @{acc_id}: Ready to publish ({hours_since:.1f}h since last pin >= 3h)")
+                print(f"   🟢 @{acc_id}: Ready to publish ({hours_since:.1f}h since last pin >= 6h)")
             else:
                 rem_mins = (MIN_ACCOUNT_COOLDOWN_HOURS - hours_since) * 60
-                print(f"   ⏳ @{acc_id}: In cooldown ({hours_since:.1f}h / 3h). Next pin in {rem_mins:.0f}m.")
+                print(f"   ⏳ @{acc_id}: In cooldown ({hours_since:.1f}h / 6h). Next pin in {rem_mins:.0f}m.")
 
     if not eligible_acc_ids:
-        print("⏳ All active accounts are currently within their 3-hour cooldown period.", flush=True)
+        print("⏳ All active accounts are currently within their 6-hour cooldown period.", flush=True)
         return
 
     # Prioritize eligible accounts by Least Recently Published (oldest last_published_at or never)
