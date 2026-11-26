@@ -84,21 +84,17 @@ class PinterestVideoUploader:
         if link and link.strip():
             payload["link"] = link.strip()
 
-        last_err = None
-        for attempt in range(1, 4):
-            try:
-                resp = requests.post(url, headers=self.headers, json=payload, timeout=60)
-                if resp.status_code >= 400:
-                    print(f"   ❌ Pinterest Pin Creation API Error ({resp.status_code}): {resp.text}", flush=True)
-                resp.raise_for_status()
-                return resp.json()
-            except requests.exceptions.RequestException as e:
-                last_err = e
-                if attempt < 3:
-                    print(f"   ⚠️ Pin creation attempt {attempt} failed ({e}), retrying in 5s...", flush=True)
-                    time.sleep(5)
-                else:
-                    raise last_err
+        # Pin creation is non-idempotent: never replay an ambiguous POST.
+        try:
+            resp = requests.post(url, headers=self.headers, json=payload, timeout=60)
+        except requests.exceptions.RequestException:
+            raise RuntimeError("Pin request outcome unknown; reconcile before retrying") from None
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(f"Pin creation not confirmed: HTTP {resp.status_code}")
+        data = resp.json()
+        if not isinstance(data, dict) or not isinstance(data.get("id"), str) or not data["id"].isdigit():
+            raise RuntimeError("Pin response lacks a valid identity; reconcile before retrying")
+        return data
 
     def upload_and_publish(
         self,
